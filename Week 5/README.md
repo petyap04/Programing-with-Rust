@@ -13,9 +13,11 @@
 
 <details>
 <summary>Натисни, за да покажеш отговора</summary>
-- Generics: типът се подава при извикване (fn foo<T>(x: T) → всеки T).
-- Associated Type: типът се дефинира вътре в trait и се фиксира при имплементацията (type Item;).
-→ Ползват се, когато trait има точно един логически „изходен“ тип (пример: Iterator::Item)
+
+ - Generics: типът се подава при извикване (fn foo<T>(x: T) → всеки T).
+ - Associated Type: типът се дефинира вътре в trait и се фиксира при имплементацията (type Item;).
+ - Ползват се, когато trait има точно един логически „изходен“ тип (пример: Iterator::Item)
+
 </details>
 
 
@@ -23,6 +25,20 @@
    ```rust
    fn convert_to_json<T: ToJson>(x: T) -> String
    ```  
+
+<details>
+<summary>Натисни, за да покажеш отговора</summary>
+
+ - Ограничават generic типа: T: ToJson → „T трябва да имплементира ToJson“.
+ - Така можем да извикваме методи на ToJson върху x.
+ - Пример:
+  ```rust
+  fn foo<T: Trait>(x: T) {}
+  // или
+  fn foo<T>(x: T) where T: Trait {}
+  ```
+
+</details>
 
 3. **Защо trait с асоцииран тип често не може да бъде използван като trait object** (напр. `&dyn Iterator`) без допълнително ограничение? Дай пример.  
 

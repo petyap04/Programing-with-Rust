@@ -11,6 +11,14 @@
 
 1. **Каква е разликата между generics и асоцииран тип** в trait (напр. `fn foo<T>(...)` срещу `type Item;`) при дефиниране на trait?  
 
+<details>
+<summary>Натисни, за да покажеш отговора</summary>
+- Generics: типът се подава при извикване (fn foo<T>(x: T) → всеки T).
+- Associated Type: типът се дефинира вътре в trait и се фиксира при имплементацията (type Item;).
+→ Ползват се, когато trait има точно един логически „изходен“ тип (пример: Iterator::Item)
+</details>
+
+
 2. **Какво означава “trait bound”** и как се използва в дефиниция като:  
    ```rust
    fn convert_to_json<T: ToJson>(x: T) -> String

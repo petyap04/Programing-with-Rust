@@ -42,7 +42,31 @@
 
 3. **Защо trait с асоцииран тип често не може да бъде използван като trait object** (напр. `&dyn Iterator`) без допълнително ограничение? Дай пример.  
 
+
+<details>
+<summary>Натисни, за да покажеш отговора</summary>
+
+ - dyn Trait изисква trait-ът да е object safe.
+ - Ако trait има асоцииран тип, трябва да го фиксираме:
+  
+   - &mut dyn Iterator<Item = i32> // ок
+   - &mut dyn Iterator // ❌ неизвестен Item
+
+</details>
+
 4. **Какво представлява `?Sized`** и кога е нужно да го използваме?  
+
+<details>
+<summary>Натисни, за да покажеш отговора</summary>
+
+ - Позволява типът да няма фиксиран размер.
+ - Нужно е при типове като dyn Trait и [T].
+ ```rust
+  fn foo<T: ?Sized>(x: &T) {}
+ ```
+ - Така можем да приемем и динамични типове чрез референции.
+
+</details>
 
 5. Как дефиницията на  
    ```rust
@@ -53,11 +77,51 @@
    ```  
    и добавянето на `where Self: Sized` влияят върху това дали може да се използва trait object?  
 
+<details>
+<summary>Натисни, за да покажеш отговора</summary>
+
+ - Казва, че trait може да се имплементира само за типове с известен размер.
+ - Това прави trait-а неизползваем като trait object (dyn Trait)
+
+</details>
+
 6. **Какво е “dereference coercion”** (`Deref` и `DerefMut`) и кога компилаторът го прилага автоматично (пример: `&Box<T>` → `&T`)?  
+
+<details>
+<summary>Натисни, за да покажеш отговора</summary>
+
+ - Автоматично преобразуване чрез Deref/DerefMut.
+ ```rust
+  fn takes_str(s: &str) {}
+  let b = Box::new(String::from("hi"));
+  takes_str(&b); // Box<String> → String → &str
+ ```
+
+</details>
 
 7. **Защо операторите в Rust (като `+`, `*`) се дефинират чрез traits с асоциирани типове**, а не чрез traits с generic параметри за резултата?  
 
+<details>
+<summary>Натисни, за да покажеш отговора</summary>
+
+ - Пример:
+```rust
+  trait Add<RHS = Self> { type Output; }
+```
+ - Output е асоцииран тип → по-ясно и удобно, отколкото generic параметър за резултата
+
+</details>
+
 8. **Кога е по-подходящо да използваме trait object** (например `Box<dyn Trait>`) вместо generic тип параметър? Какви са компромисите между двата подхода?   
+
+<details>
+<summary>Натисни, за да покажеш отговора</summary>
+
+ - Generic (T: Trait) → compile-time, по-бързо, но фиксирано.
+ - Trait object (Box<dyn Trait>) → runtime, гъвкаво, но малко по-бавно.
+ - Използвай dyn Trait, когато типът се решава по време на изпълнение.
+
+</details>
 
 9. Дадено е:  
     ```rust
@@ -72,3 +136,17 @@
     }
     ```
     Как бихме дефинирали функция, която работи с **някой тип**, който имплементира `MyTrait`, без да знаем конкретния `Output` тип? Какви са вариантите и ограниченията?
+
+<details>
+<summary>Натисни, за да покажеш отговора</summary>
+
+```rust
+fn run<T: MyTrait>(x: &T) -> T::Output {
+      x.do_stuff()
+  }
+```
+
+ - Ако не знаем Output, не можем да направим dyn MyTrait без да го фиксираме.
+ - Или ползваме generic, или фиксираме Output тип в трейта.
+
+</details>

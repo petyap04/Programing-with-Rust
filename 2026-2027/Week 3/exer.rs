@@ -53,8 +53,8 @@ fn main() {
 
     // 3. Running the analysis
     println!("=== Geometric Shape Analyzer ===");
-    analyze_shape(fig1);
-    analyze_shape(fig2);
-    analyze_shape(fig3);
-    analyze_shape(fig4);
+    fig1.analyze_shape();
+    fig2.analyze_shape();
+    fig3.analyze_shape(fig3);
+    fig4.analyze_shape();
 }

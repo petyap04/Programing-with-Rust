@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rust FMI - Разбъркан тест (Последна седмица)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center justify-center p-4">
+
+    <div class="w-full max-w-2xl bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl p-6 md:p-8">
+        
+        <!-- Заглавие, Таймер и Прогрес -->
+        <div class="flex flex-col sm:flex-row justify-between items-center mb-6 border-b border-slate-700 pb-4 gap-4">
+            <h1 class="text-xl font-bold text-orange-500">🦀 FMI Rust Checkpoint (Generics & Traits)</h1>
+            <div class="flex items-center gap-3">
+                <span id="timer-badge" class="text-sm font-bold bg-orange-950/60 border border-orange-600 px-3 py-1 rounded-full text-orange-300">⏳ 15 сек</span>
+                <span id="progress-indicator" class="text-sm font-semibold bg-slate-700 px-3 py-1 rounded-full text-slate-300">Въпрос 1 от 10</span>
+            </div>
+        </div>
+
+        <!-- Контейнер за въпроса -->
+        <div id="quiz-container">
+            <h2 id="question-text" class="text-lg font-medium mb-6 text-slate-200">Зареждане на въпросите...</h2>
+            
+            <div id="options-container" class="space-y-3 mb-6">
+                <!-- Динамични бутони -->
+            </div>
+        </div>
+
+        <!-- Обяснение -->
+        <div id="feedback-box" class="hidden mb-6 p-4 rounded-xl border">
+            <p id="feedback-text" class="text-sm"></p>
+        </div>
+
+        <!-- Бутон за следващ въпрос -->
+        <div class="flex justify-end">
+            <button id="next-btn" onclick="handleNext()" class="hidden bg-orange-600 hover:bg-orange-500 text-white font-semibold px-6 py-2.5 rounded-xl transition duration-200 shadow-lg">
+                Следващ въпрос ➔
+            </button>
+        </div>
+
+        <!-- Краен екран -->
+        <div id="result-screen" class="hidden text-center py-8">
+            <h2 class="text-3xl font-extrabold text-orange-500 mb-4">🎉 Тестът приключи!</h2>
+            <p id="score-text" class="text-xl mb-2 text-slate-300"></p>
+            <p class="text-sm text-slate-400 mt-4">Опитът беше записан. Нямате право на повторно явяване.</p>
+        </div>
+
+    </div>
+
+    <script>
+        const rawQuizData = [
+            {
+                question: "Какво прави компилаторът под капака при използване на обобщен тип (generic) във функция или структура?",
+                options: [
+                    { text: "Използва виртуални таблици (vtable) за динамично разпознаване на типа по време на изпълнение.", isCorrect: false, rationale: "Това е при динамичен полиморфизъм с trait objects (dyn Trait)." },
+                    { text: "Генерира отделно специализирано копие на машинния код за всеки използван тип чрез мономорфизация (monomorphization).", isCorrect: true, rationale: "Точно така! Мономорфизацията премахва runtime овърхеда, макар и да увеличава размера на бинарния файл." },
+                    { text: "Преобразува всички типове към универсален `Any` указател.", isCorrect: false, rationale: "Rust пази строга статична типова сигурност." },
+                    { text: "Изпълнява функцията чрез интерпретатор.", isCorrect: false, rationale: "Rust се компилира директно до нативен код." }
+                ]
+            },
+            {
+                question: "Каква е основната роля на дефинирането на <strong>Trait Bounds</strong> (ограничения на типажите) в сигнатура на обобщена функция?",
+                options: [
+                    { text: "Ограничават типа `T` само до такива, които поддържат специфични методологии и интерфейси, позволявайки извикването им в тялото на функцията.", isCorrect: true, rationale: "Точно така! Без ограничения компилаторът третира generic параметъра като 'черна кутия'." },
+                    { text: "Надграждат паметта на типа до заделяне в купа (heap).", isCorrect: false, rationale: "Trait bounds нямат връзка с мястото на заделяне в паметта." },
+                    { text: "Гарантират, че функцията няма да приема мутабилни аргументи.", isCorrect: false, rationale: "Мутабилността се контролира отделно." },
+                    { text: "Задължителни са само при работа с примитивни числа.", isCorrect: false, rationale: "Приложими са за всякакви потребителски структури и enum-и." }
+                ]
+            },
+            {
+                question: "Ако имаме дефиниран trait <code>Summary</code>, каква е съществената разлика при използване на параметър от тип <code>impl Summary</code> спрямо <code>dyn Summary</code>?",
+                options: [
+                    { text: "Няма никаква разлика, това са синоними.", isCorrect: false, rationale: "Разликата между статичен и динамичен полиморфизъм е съществена." },
+                    { text: "`impl Summary` използва статичен полиморфизъм (мономорфизация), докато `dyn Summary` е trait object за динамичен полиморфизъм с указател и vtable.", isCorrect: true, rationale: "Точно така! `dyn` изисква динамично свързване и смарт указател (напр. `Box`), но позволява хетерогенни колекции." },
+                    { text: "`dyn Summary` е по-бърз, защото избягва дублирането на код.", isCorrect: false, rationale: "dyn Summary има лек овърхед при изпълнение заради динамичното dispatch-ване." },
+                    { text: "`impl Summary` работи само за числа.", isCorrect: false, rationale: "Работи за всякакви типове, отговарящи на трейта." }
+                ]
+            },
+            {
+                question: "Какво представлява и къде се използва синтаксисът с <code>where</code> клауза при обобщените типове?",
+                options: [
+                    { text: "Използва се за филтриране на нишки по време на изпълнение.", isCorrect: false, rationale: "Няма връзка с нишки." },
+                    { text: "Поставя се след сигнатурата на функцията/структурата за по-добра четимост, когато имаме множество сложни trait bounds.", isCorrect: true, rationale: "Точно така! Where клаузите правят сигнатурите чисти, изнасяйки ограниченията извън ъгловите скоби." },
+                    { text: "Задължителен е за всеки generic метод в Rust.", isCorrect: false, rationale: "Ограниченията могат да се пишат и директно в скобите (<T: Trait>)." },
+                    { text: "Използва се за управление на времената на живот извън модулите.", isCorrect: false, rationale: "Основната му цел е чист синтаксис за ограничения." }
+                ]
+            },
+            {
+                question: "Може ли една потребителска структура да имплементира множество (повече от един) различни trait-а едновременно?",
+                options: [
+                    { text: "Не, позволен е строго един единствен trait на структура.", isCorrect: false, rationale: "Структурите могат да имплементират колкото поискат traits." },
+                    { text: "Да, структурите могат да имплементират неограничен брой traits според нуждите на програмата.", isCorrect: true, rationale: "Точно така! Това дава изключителна гъвкавост в архитектурата на софтуера в Rust." },
+                    { text: "Само ако трейтовете са вградени в стандартната библиотека.", isCorrect: false, rationale: "Потребителските traits се имплементират по същия начин." },
+                    { text: "Само ако структурата е празна (unit struct).", isCorrect: false, rationale: "Няма такива ограничения." }
+                ]
+            },
+            {
+                question: "Какво ще стане, ако опитаме да извикаме метод от даден trait върху тип, който <strong>не</strong> го е имплементирал?",
+                options: [
+                    { text: "Компилаторът ще върне грешка, че типът не имплементира съответния trait.", isCorrect: true, rationale: "Точно така! Rust е изключително стриктен към това и проверява всички реализации статично." },
+                    { text: "Методът ще се изпълни с дефолтна празна стойност.", isCorrect: false, rationale: "Rust няма неявни дефолтни изпълнения на липсващи методи." },
+                    { text: "Програмата ще панира само при рантайм.", isCorrect: false, rationale: "Проверката е изцяло по време на компилация." },
+                    { text: "Компилаторът автоматично ще генерира празна имплементация.", isCorrect: false, rationale: "Компилаторът не дописва липсващ код вместо нас." }
+                ]
+            },
+            {
+                question: "Какво означава ключовата дума <code>Default</code>, когато я използваме като trait bound за обобщен тип?",
+                options: [
+                    { text: "Типът задължително поддържа метода `default()`, който връща стандартна/начална стойност за този тип.", isCorrect: true, rationale: "Точно така! Трайтът Default позволява създаване на инстанции с дефолтни стойности (напр. 0, празен вектор и др.)." },
+                    { text: "Типът се изтрива автоматично при излизане от обхват.", isCorrect: false, rationale: "За триене отговаря Drop." },
+                    { text: "Типът става мутабилен по подразбиране.", isCorrect: false, rationale: "Мутабилността се указва с let mut." },
+                    { text: "Прави обекта копируем (Copy).", isCorrect: false, rationale: "Copy е отделен trait." }
+                ]
+            },
+            {
+                question: "Какво е поведението на асоциираните функции или дефолтните реализации в рамките на един trait?",
+                options: [
+                    { text: "Trait-ът може да съдържа както сигнатури без тяло, така и методи с готова дефолтна реализация, която структурите могат да презапишат или ползват директно.", isCorrect: true, rationale: "Точно така! Дефолтните реализации спестяват повтарящ се код в имплементациите." },
+                    { text: "Всички методи в един trait задължително трябва да имат празно тяло.", isCorrect: false, rationale: "Позволени са дефолтни реализации." },
+                    { text: "Трейтовете в Rust не могат да съдържат никакви функции, само константи.", isCorrect: false, rationale: "Трейтовете дефинират именно поведение чрез функции/методи." },
+                    { text: "Методите в trait задължително трябва да са мутабилни.", isCorrect: false, rationale: "Зависи от сигнатурата (дали приемат &self или &mut self)." }
+                ]
+            },
+            {
+                question: "Кое твърдение описва правилно взаимовръзката между Generics и типажа <code>Debug</code> при отпечатване с <code>println!(\"{:?}\", item)</code>?",
+                options: [
+                    { text: "Всяка generic функция може да отпечатва елементите си без ограничения.", isCorrect: false, rationale: "Компилаторът не знае дали типът поддържа принтване без изричен bound." },
+                    { text: "За да може обобщена функция да отпечата елемент от тип `T` чрез дебаг формат, тя изисква изричен trait bound `T: std::fmt::Debug`.", isCorrect: true, rationale: "Точно така! Компилаторът изисква гаранция, че типът знае как да се представи като дебаг низ." },
+                    { text: "Дебаг принтването е вградено за всички възможни типове автоматично.", isCorrect: false, rationale: "Изисква се изричен derive или имплементация." },
+                    { text: "Работи само ако типът е примитивно число.", isCorrect: false, rationale: "Работи за всякакви структури с Debug." }
+                ]
+            },
+            {
+                question: "Какво е основното предимство на използването на обобщени структури (например <code>struct Holder&lt;T&gt;</code>) в сравнение с писането на отделни структури за всеки тип?",
+                options: [
+                    { text: "Предотвратява дублирането на код (DRY принцип) и осигурява типова безопасност на етап компилация без овърхед.", isCorrect: true, rationale: "Точно така! Получаваме максимално гъвкав и преизползваем код с нулеви рънврейм разходи." },
+                    { text: "Прави кода интерпретируем и по-лесен за динамично сканиране.", isCorrect: false, rationale: "Rust е напълно компилируем език." },
+                    { text: "Позволява съхранение на смесени типове в един и същ вектор без ограничения.", isCorrect: false, rationale: "Един вектор пази хомогенни данни; за хетерогенни се ползват trait objects." },
+                    { text: "Автоматично премахва нуждата от мутабилност.", isCorrect: false, rationale: "Generics нямат връзка с мутабилността." }
+                ]
+            }
+        ];
+
+        // Разбъркваме въпросите на случаен принцип при зареждане
+        let quizData = [...rawQuizData].sort(() => Math.random() - 0.5);
+
+        let currentQuestion = 0;
+        let score = 0;
+        let answered = false;
+        let timeLeft = 15;
+        let timerInterval = null;
+
+        function startTimer() {
+            timeLeft = 15;
+            updateTimerDisplay();
+            
+            if (timerInterval) clearInterval(timerInterval);
+
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                updateTimerDisplay();
+
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    handleTimeOut();
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const badge = document.getElementById('timer-badge');
+            badge.innerText = `⏳ ${timeLeft} сек`;
+            if (timeLeft <= 5) {
+                badge.className = "text-sm font-bold bg-rose-950/60 border border-rose-600 px-3 py-1 rounded-full text-rose-300 animate-pulse";
+            } else {
+                badge.className = "text-sm font-bold bg-orange-950/60 border border-orange-600 px-3 py-1 rounded-full text-orange-300";
+            }
+        }
+
+        function handleTimeOut() {
+            if (answered) return;
+            answered = true;
+            clearInterval(timerInterval);
+
+            currentQuestion++;
+            if (currentQuestion < quizData.length) {
+                loadQuestion();
+            } else {
+                showResults();
+            }
+        }
+
+        function loadQuestion() {
+            answered = false;
+            const q = quizData[currentQuestion];
+            
+            document.getElementById('progress-indicator').innerText = `Въпрос ${currentQuestion + 1} от ${quizData.length}`;
+            document.getElementById('question-text').innerHTML = q.question;
+            
+            const optionsContainer = document.getElementById('options-container');
+            optionsContainer.innerHTML = '';
+
+            // Разбъркваме и отговорите за максимална динамика
+            const shuffledOptions = [...q.options].sort(() => Math.random() - 0.5);
+
+            shuffledOptions.forEach((opt) => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left p-4 rounded-xl border border-slate-700 bg-slate-700/50 hover:bg-slate-700 transition duration-200 text-slate-200 font-medium text-sm md:text-base";
+                btn.innerHTML = opt.text;
+                btn.onclick = () => selectOption(opt, btn);
+                optionsContainer.appendChild(btn);
+            });
+
+            document.getElementById('feedback-box').classList.add('hidden');
+            document.getElementById('next-btn').classList.add('hidden');
+
+            startTimer();
+        }
+
+        function selectOption(selectedOpt, btnElement) {
+            if (answered) return;
+            answered = true;
+            clearInterval(timerInterval);
+
+            const buttons = document.getElementById('options-container').children;
+            for (let btn of buttons) {
+                btn.disabled = true;
+                const matchingOpt = quizData[currentQuestion].options.find(o => o.text === btn.innerHTML);
+                if (matchingOpt && matchingOpt.isCorrect) {
+                    btn.classList.add('bg-emerald-900/60', 'border-emerald-500', 'text-emerald-200');
+                }
+            }
+
+            const feedbackBox = document.getElementById('feedback-box');
+            const feedbackText = document.getElementById('feedback-text');
+            feedbackBox.classList.remove('hidden');
+
+            if (selectedOpt.isCorrect) {
+                score++;
+                feedbackBox.className = "mb-6 p-4 rounded-xl border bg-emerald-950/40 border-emerald-600 text-emerald-300";
+                feedbackText.innerHTML = `<strong>Браво! Правилно.</strong> ${selectedOpt.rationale}`;
+            } else {
+                feedbackBox.className = "mb-6 p-4 rounded-xl border bg-rose-950/40 border-rose-600 text-rose-300";
+                feedbackText.innerHTML = `<strong>Грешно.</strong> ${selectedOpt.rationale}`;
+            }
+
+            document.getElementById('next-btn').classList.remove('hidden');
+        }
+
+        function handleNext() {
+            currentQuestion++;
+            if (currentQuestion < quizData.length) {
+                loadQuestion();
+            } else {
+                showResults();
+            }
+        }
+
+        function showResults() {
+            if (timerInterval) clearInterval(timerInterval);
+            document.getElementById('quiz-container').classList.add('hidden');
+            document.getElementById('feedback-box').classList.add('hidden');
+            document.getElementById('next-btn').classList.add('hidden');
+            document.getElementById('progress-indicator').classList.add('hidden');
+            document.getElementById('timer-badge').classList.add('hidden');
+            
+            const resultScreen = document.getElementById('result-screen');
+            resultScreen.classList.remove('hidden');
+
+            const percentage = Math.round((score / quizData.length) * 100);
+            let message = "";
+            if (percentage >= 80) message = "Върховно представяне! Владееш Generics и Traits перфектно! 🚀";
+            else if (percentage >= 50) message = "Добър резултат! Имаш стабилни знания от лекцията. 👍";
+            else message = "Има още детайли за преговор. Прегледай слайдовете отново! 💪";
+
+            document.getElementById('score-text').innerHTML = `Твоят краен резултат е <strong>${score} от ${quizData.length}</strong> (${percentage}%).<br><br><span class="text-orange-400 font-medium">${message}</span>`;
+        }
+
+        window.onload = loadQuestion;
+    </script>
+</body>
+</html>
